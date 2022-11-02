@@ -2,6 +2,7 @@ package routers
 
 import (
 	"gin-boilerplate/infra/database"
+	"gin-boilerplate/infra/logger"
 	"gin-boilerplate/routers/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,18 @@ func SetupRoute() *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	authMiddleware, err := middleware.JwtMiddleware()
+
+	if err != nil {
+		logger.Fatalf("middleware JwtMiddleware() error: %s", err)
+	}
+
+	errInit := authMiddleware.MiddlewareInit()
+
+	if errInit != nil {
+		logger.Fatalf("authMiddleware.MiddlewareInit() error:" + errInit.Error())
+	}
+
 	allowedHosts := viper.GetString("ALLOWED_HOSTS")
 	router := gin.New()
 	router.SetTrustedProxies([]string{allowedHosts})
@@ -24,7 +37,7 @@ func SetupRoute() *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORSMiddleware())
 
-	RegisterRoutes(router, database.DB) //routes register
+	RegisterRoutes(router, database.DB, authMiddleware) //routes register
 
 	return router
 }
